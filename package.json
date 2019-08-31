@@ -1,0 +1,41 @@
+{
+  "name": "gasser",
+  "version": "1.0.0",
+  "description": "A CLI build tool to transform JS SPA's to support Google Apps Script.",
+  "main": "./lib/index.js",
+  "scripts": {
+    "start": "ts-node-dev --respawn --transpileOnly src/index.ts",
+    "create": "npm run build && npm run test",
+    "build": "tsc -p .",
+    "test": "sudo npm i -g ",
+    "refresh": "rm -rf ./node_modules ./package-lock.json && npm install"
+  },
+  "keywords": [
+    "google",
+    "apps",
+    "script",
+    "npm",
+    "build",
+    "tool"
+  ],
+  "author": "Nathan Hotchkin",
+  "license": "MIT",
+  "bin": {
+    "gasser": "./lib/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^10.12.10",
+    "tslint": "^5.11.0",
+    "typescript": "^3.1.6",
+    "ts-node-dev": "^1.0.0-pre.41"
+  },
+  "dependencies": {
+    "@types/figlet": "^1.2.0",
+    "chalk": "^2.4.2",
+    "commander": "^2.19.0",
+    "figlet": "^1.2.3",
+    "fs-extra": "^7.0.1",
+    "inquirer": "^6.2.2",
+    "jsdom": "^15.1.1"
+  }
+}

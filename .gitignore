@@ -1,3 +1,10 @@
+# GAS files
+gas-build
+clasp.json
+appsscript.json
+.claspignore
+lib
+
 # Logs
 logs
 *.log
