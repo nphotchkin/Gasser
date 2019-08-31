@@ -1,6 +1,6 @@
 # GAS files
 gas-build
-clasp.json
+.clasp.json
 appsscript.json
 .claspignore
 lib

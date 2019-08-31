@@ -38,31 +38,32 @@ export default class Files {
     }
   }
 
-  async createDirectoryInCwd(directoryName: string) {
-    return new Promise((resolve, reject) => {
-      fs.mkdir(process.cwd()  + '\\' + directoryName, { recursive: true }, (err: any) => {
-        if (err) { 
-          reject(err);
-        } else {
-          console.log(chalk.bgBlue(directoryName) + ' directory created.');
-          resolve();
-        }
-      });
+  createDirectoryInCwd(directoryName: string) {
+    
+    fsExtra.ensureDirSync(directoryName, (err: any) => {
+      if (err) { 
+        throw new Error(err);
+      } else {
+        console.log(chalk.bgBlue(directoryName) + ' directory created.');
+      }
     });
+  
   }
 
-   async removeDirectoryIfExists(src?: any, dest?: any) {
-      return new Promise((resolve, reject) => {
-          try {
-              fsExtra.remove('./gas-build');
-               
-              console.log(chalk.bgBlue('gas-build') + " directory deleted.");
-              resolve();
-          } catch (err) {
-              console.error(err)
-              reject(new Error(err));
-          };
-      });
+  removeDirectoryIfExists(directory: string) {
+      try {
+          fsExtra.removeSync(directory);
+          console.log(chalk.bgBlue(directory) + " directory deleted.");
+
+      } catch (err) {
+          console.error(err);
+      };
+  }
+
+  copySync(source: string, destination: string) {
+      fsExtra.copySync(source, destination, { overwrite: false, errorOnExist: true }, function(err: any, data: any) {
+        if (err) return new Error(err);
+      })
   }
 
   createFile(fileName: string, fileContents: string) {
@@ -74,7 +75,6 @@ export default class Files {
   }
 
   readFile(path: string) {
-
     return new Promise(function(resolve, reject) {
         fs.readFile(path, 'utf8', function(err: any, data: any) {
           if (err) { reject(); throw err; }
@@ -83,16 +83,5 @@ export default class Files {
         })
     });
   }
-
-  copy(source: string, destination: string) {
-
-    return new Promise(function(resolve, reject) {
-        fsExtra.copy(source, destination, function(err: any, data: any) {
-          if (err) { reject(); throw err; }
-    
-          resolve();
-        })
-     });
-  }
-  
+   
 }

@@ -6,88 +6,120 @@ const { JSDOM } = jsdom;
 import chalk from 'chalk';
 import Files from '../util/files';
 
+import ClaspFiles from '../model/ClaspFiles';
+import ClaspFile from '../model/ClaspFiles';
+
 export class GASBuild {
 
     files = new Files();
 
     distPath = "";
 
+    claspFiles = new ClaspFiles();
+
+    GAS_BUILD_DIR = "gas-build";
+
     constructor(distPath: string) {
         this.distPath = distPath;
-        this._throwIfMissingProjectFiles();
+        this.throwIfMissingProjectFiles();
     }
 
     buildProject() {
 
         chalk.bgBlue('building from path: ' + this.distPath);
         console.log();
+        try {
+        this.createNewBuild();
+        } catch  (err) {
+            console.log(chalk.red('unable to create project due to: '));
+            console.log(err);
+        }
 
-    
-            // TODO: copy files
-            // create externalied config gasser.json
-                // ignore files | directories
+
+        let copiedClaspFiles = false;
+        try {
+            copiedClaspFiles = this.copyClaspFilesToBuild();
+        } catch (fileName) {
+
+            console.log(chalk.bgRed(chalk.white(fileName)) + ' does not exist in the directory gasser was ran from, it is a required file for an App Script build.');
             
-        this._performHousekeeping().then(() => {
+            this.performHousekeeping();
+
+            console.log('exiting process.');
+            process.exit(0);
+        }
+    
+        if (copiedClaspFiles) {
         
-                var indexString = this._getIndexFileContents();
         
-                let dom = new JSDOM(indexString);
+            var indexString = this.getIndexFileContents();
+    
+            let dom = new JSDOM(indexString);
 
-                this._removeAllMatchingElementsByTagName(dom, 'script');
-                this._removeAllMatchingElementsByTagName(dom, 'link');
+            this.removeAllMatchingElementsByTagName(dom, 'script');
+            this.removeAllMatchingElementsByTagName(dom, 'link');
 
-                var interpolatedFileNames = this._saveInterpolatedFilesToDisk();
+            var interpolatedFileNames = this.saveInterpolatedFilesToDisk();
 
-                interpolatedFileNames.map(fileName => 
-                    this._addTemmplateReferenceToIndexHtml(dom, fileName)
-                );
+            interpolatedFileNames.map(fileName => 
+                this.addTemmplateReferenceToIndexHtml(dom, fileName)
+            );
 
 
-                let docHtml: string = dom.window.document.documentElement.outerHTML;
-                docHtml =  this._replaceCharacterEntityReferencesWithLiterals(docHtml);
-        
-                fse.writeFileSync('./gas-build/' + 'index.html', docHtml );
+            let docHtml: string = dom.window.document.documentElement.outerHTML;
+            docHtml =  this.replaceCharacterEntityReferencesWithLiterals(docHtml);
+    
+            fse.writeFileSync('./' + this.GAS_BUILD_DIR  +  '/' + 'index.html', docHtml );
 
-                console.log();
-                console.log();
-                console.log(chalk.green('Project Built! you can now push your clasp project from ') + chalk.bgBlue('/gas-build') );
-
-            },
-            (err) => {
-                console.log(chalk.red('unable to create project due to: '));
-                console.log(err);
-            }
-        );
+            console.log();
+            console.log();
+            console.log(chalk.green('Project Built! you can now push your clasp project from ') + chalk.bgBlue('/' + this.GAS_BUILD_DIR) );
+      }
+          
     }
-
-    async _performHousekeeping() {
-        await this.files.removeDirectoryIfExists();
-        await this.files.createDirectoryInCwd("gas-build");
+   
+    private createNewBuild() {
+    
+        this.files.removeDirectoryIfExists('./' + this.GAS_BUILD_DIR);
+    
+        this.files.createDirectoryInCwd('./' + this.GAS_BUILD_DIR);
         console.log();
     }
 
+    private performHousekeeping() {
+        this.files.removeDirectoryIfExists('./' + this.GAS_BUILD_DIR );
+        console.log();
+    }
 
-    _throwIfMissingProjectFiles() {
+    private copyClaspFilesToBuild() {
+
+        let claspFiles = this.claspFiles.getFileDecriptors();
+
+        claspFiles.map(claspFile => {
+   
+            try {
+                this.files.copySync('./' + claspFile.fileName,  './' + this.GAS_BUILD_DIR + '/' + claspFile.fileName);
+            } catch(error) {
+
+                // i need to catch the error somewhere and prevent further execution
+                if (claspFile.errorIfNotExist == true) {
+
+                    throw new Error(claspFile.fileName);
+                }
+            }
+        });
+
+        return true;
+    }
+
+    private throwIfMissingProjectFiles() {
 
 
         if (!this.files.directoryExists(this.distPath)) {
             throw new Error('Project build directory: ' + this.distPath + ' does not exist!'); 
         } 
         
-        let appScriptFiles = [
-            {
-                "fileName": ".clasp.json",
-                "errorIfNotExist": true
-            },
-            {
-                "fileName": "appsscript.json",
-                "errorIfNotExist": true
-            },
-            {
-                "fileName": ".claspignore",
-                "errorIfNotExist": false
-            }
-        ];
+  
 
         // appScriptFiles.forEach(appScriptFile => {
         //       if (!this.files.fileExists(appScriptFile.fileName)) {
@@ -104,20 +136,20 @@ export class GASBuild {
 
     }
 
-    _saveInterpolatedFilesToDisk() {
+    private saveInterpolatedFilesToDisk() {
  
         let interpolatedFileNames: string[] = [];
     
         fse.readdirSync(this.distPath).forEach((fileName: string) => {
     
-            var transformedOutput = this._wrapFileContentsWithInclusionElement(fileName);
+            var transformedOutput = this.wrapFileContentsWithInclusionElement(fileName);
     
-            if (this._getExtension(fileName) != '.html' && transformedOutput != false) {
-                fse.writeFileSync('./gas-build/' + fileName + '.html', transformedOutput);
+            if (this.getExtension(fileName) != '.html' && transformedOutput != false) {
+                fse.writeFileSync('./' + this.GAS_BUILD_DIR + '/' + fileName + '.html', transformedOutput);
                 interpolatedFileNames.push(fileName);
             } else {
 
-                if (this._getExtension(fileName) !== '.html') {
+                if (this.getExtension(fileName) !== '.html') {
                     console.log(
                         chalk.yellow('Ignored file: ' + chalk.black.bgYellow(fileName) + ' only files ending in .css & .js are supported. ')
                     );
@@ -133,14 +165,14 @@ export class GASBuild {
         return interpolatedFileNames;
     }
     
-    _getIndexFileContents() {
+    private getIndexFileContents() {
 
         var fileContents;
     
         fse.readdirSync(this.distPath).forEach((fileName: string) => {
             // if file is not ignored file
             // then
-            if (this._getExtension(fileName) == '.html') {               
+            if (this.getExtension(fileName) == '.html') {               
                 fileContents = fse.readFileSync(this.distPath + "/" + fileName).toString();
             }
         });
@@ -161,23 +193,23 @@ export class GASBuild {
     }
 
         
-    _wrapFileContentsWithInclusionElement(fileName: string) {
+    private wrapFileContentsWithInclusionElement(fileName: string) {
 
-        var fileExtension = this._getExtension(fileName);
+        var fileExtension = this.getExtension(fileName);
 
         var fileContents;
 
         switch (fileExtension) {
             case '.css':
                 
-                fileContents = this._wrapTextInXml(fileName, 'style');
+                fileContents = this.wrapTextInXml(fileName, 'style');
 
                 break;
 
             case '.js':
 
 
-                fileContents = this._wrapTextInXml(fileName, 'script')
+                fileContents = this.wrapTextInXml(fileName, 'script')
                 break;
 
 
@@ -190,13 +222,13 @@ export class GASBuild {
         return fileContents;
     }
     
-    _wrapTextInXml(fileName: string, elementName: string) {
+    private wrapTextInXml(fileName: string, elementName: string) {
         var contents = fse.readFileSync(this.distPath + '/' + fileName);
     
         return '<' + elementName + '> \n' + contents.toString() + '\n </' + elementName + '>';
     }
 
-    _getExtension(filename: string) {
+    private getExtension(filename: string) {
         var i = filename.lastIndexOf('.');
         return (i < 0) ? '' : filename.substr(i);
     }
@@ -205,40 +237,40 @@ export class GASBuild {
      * template refrences literal opening and closing brackets will change to
      * character entity references.
      */
-    _addTemmplateReferenceToIndexHtml(dom: any, fileName: string) {
+    private addTemmplateReferenceToIndexHtml(dom: any, fileName: string) {
 
-        var templateSyntaxString = this._wrapFileNameInTemplateSyntax(fileName);
+        var templateSyntaxString = this.wrapFileNameInTemplateSyntax(fileName);
      
-        var fileExtension = this._getExtension(fileName);
+        var fileExtension = this.getExtension(fileName);
      
 
         switch (fileExtension) {
             case '.css':
                 // last child header insert
 
-                dom.window.document.head.insertAdjacentText('beforeend', "\t" + this._wrapFileNameInTemplateSyntax(fileName) + "\n");
+                dom.window.document.head.insertAdjacentText('beforeend', "\t" + this.wrapFileNameInTemplateSyntax(fileName) + "\n");
                 
                 break;
 
             case '.js':
-                dom.window.document.body.insertAdjacentText('beforeend', "\t" + this._wrapFileNameInTemplateSyntax(fileName) + "\n");
+                dom.window.document.body.insertAdjacentText('beforeend', "\t" + this.wrapFileNameInTemplateSyntax(fileName) + "\n");
                 break;
     
         }
      }
 
-    _wrapFileNameInTemplateSyntax(fileName: string) {
+    private wrapFileNameInTemplateSyntax(fileName: string) {
 
         return "<?!= include('" + fileName + "'); ?>";
     }
     
-    _removeAllMatchingElementsByTagName(dom: any, tagName: string) {
+    private removeAllMatchingElementsByTagName(dom: any, tagName: string) {
 
         var elements = dom.window.document.getElementsByTagName(tagName);
         while (elements[0]) elements[0].parentNode.removeChild(elements[0]);
     }
 
-    _replaceCharacterEntityReferencesWithLiterals(docHtml: string) {
+    private replaceCharacterEntityReferencesWithLiterals(docHtml: string) {
         
         docHtml = docHtml.replace(/(\&lt;)/gi, '<');
         docHtml = docHtml.replace(/(\&gt;)/gi, '>');
