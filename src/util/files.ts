@@ -1,6 +1,7 @@
+import chalk from 'chalk';
+
 const fs = require('fs');
 const path = require('path');
-
 const fsExtra = require('fs-extra');
 
 export default class Files {
@@ -37,11 +38,31 @@ export default class Files {
     }
   }
 
-  createDirectoryInCwd(directoryName: string) {
-    
-    return fs.mkdir(process.cwd()  + '\\' + directoryName, { recursive: true }, (err: any) => {
-      if (err) throw err;
+  async createDirectoryInCwd(directoryName: string) {
+    return new Promise((resolve, reject) => {
+      fs.mkdir(process.cwd()  + '\\' + directoryName, { recursive: true }, (err: any) => {
+        if (err) { 
+          reject(err);
+        } else {
+          console.log(chalk.bgBlue(directoryName) + ' directory created.');
+          resolve();
+        }
+      });
     });
+  }
+
+   async removeDirectoryIfExists(src?: any, dest?: any) {
+      return new Promise((resolve, reject) => {
+          try {
+              fsExtra.remove('./gas-build');
+               
+              console.log(chalk.bgBlue('gas-build') + " directory deleted.");
+              resolve();
+          } catch (err) {
+              console.error(err)
+              reject(new Error(err));
+          };
+      });
   }
 
   createFile(fileName: string, fileContents: string) {

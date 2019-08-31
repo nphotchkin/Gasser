@@ -22,46 +22,50 @@ export class GASBuild {
         chalk.bgBlue('building from path: ' + this.distPath);
         console.log();
 
-        //this._removeBuildIfExists();
-        // TODO: copy files
+    
+            // TODO: copy files
             // create externalied config gasser.json
                 // ignore files | directories
+            
+        this._performHousekeeping().then(() => {
+        
+                var indexString = this._getIndexFileContents();
+        
+                let dom = new JSDOM(indexString);
 
-        this.files.createDirectoryInCwd("gas-build");
+                this._removeAllMatchingElementsByTagName(dom, 'script');
+                this._removeAllMatchingElementsByTagName(dom, 'link');
 
-        var indexString = this._getIndexFileContents();
-  
-        let dom = new JSDOM(indexString);
+                var interpolatedFileNames = this._saveInterpolatedFilesToDisk();
 
-        this._removeAllMatchingElementsByTagName(dom, 'script');
-        this._removeAllMatchingElementsByTagName(dom, 'link');
+                interpolatedFileNames.map(fileName => 
+                    this._addTemmplateReferenceToIndexHtml(dom, fileName)
+                );
 
-        var interpolatedFileNames = this._saveInterpolatedFilesToDisk();
 
-        interpolatedFileNames.map(fileName => 
-            this._addTemmplateReferenceToIndexHtml(dom, fileName)
+                let docHtml: string = dom.window.document.documentElement.outerHTML;
+                docHtml =  this._replaceCharacterEntityReferencesWithLiterals(docHtml);
+        
+                fse.writeFileSync('./gas-build/' + 'index.html', docHtml );
+
+                console.log();
+                console.log();
+                console.log(chalk.green('Project Built! you can now push your clasp project from ') + chalk.bgBlue('/gas-build') );
+
+            },
+            (err) => {
+                console.log(chalk.red('unable to create project due to: '));
+                console.log(err);
+            }
         );
-
-
-        let docHtml: string = dom.window.document.documentElement.outerHTML;
-        docHtml =  this._replaceCharacterEntityReferencesWithLiterals(docHtml);
-   
-        fse.writeFileSync('./gas-build/' + 'index.html', docHtml );
-
-        console.log();
-        console.log();
-        console.log(chalk.green('Project Built! you can now push your clasp project from ') + chalk.bgBlue('/gas-build') );
     }
 
-    _removeBuildIfExists() {
-
-        fse.remove('./gas-build', (err: any) => {
-            if (err) return console.error(err)
-    
-            console.log('success!') 
-        });
-    
+    async _performHousekeeping() {
+        await this.files.removeDirectoryIfExists();
+        await this.files.createDirectoryInCwd("gas-build");
+        console.log();
     }
+
 
     _throwIfMissingProjectFiles() {
 

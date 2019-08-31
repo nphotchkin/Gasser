@@ -6,6 +6,7 @@
     "outDir": "./lib",
     "strict": true
   },
+  "lib": ["es2015.promise"],
   "typeRoots": ["lib"],
   "include": ["src"],
   "exclude": ["node_modules", "**/__tests__/*"]
